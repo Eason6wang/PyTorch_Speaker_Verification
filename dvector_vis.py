@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
-
+import random
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 TRAIN_SEQUENCE = 'train_sequence'
@@ -13,7 +13,7 @@ def csv_load(csv_path, num_records):
     with open(csv_path, 'r') as f:
         records = pd.read_csv(csv_path, names=['npz_path'])['npz_path'].values.tolist()
     # IMPORTANT: dont overwhelm the machine
-    records = records[:num_records]
+    records = random.sample(records, num_records)
     features, speakers = [], []
     for p in tqdm(records):
         data = np.load(p)

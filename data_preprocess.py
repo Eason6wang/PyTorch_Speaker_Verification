@@ -6,9 +6,10 @@ import os
 import librosa
 import numpy as np
 from hparam import hparam as hp
-
+import random
+import scipy.stats as stats
 # downloaded dataset path
-audio_path = glob.glob(os.path.dirname(hp.unprocessed_data))                                        
+audio_path = glob.glob('./dev/*')
 
 def save_spectrogram_tisv():
     """ Full preprocess of text independent utterance. The log-mel-spectrogram is saved as numpy file.
@@ -22,15 +23,22 @@ def save_spectrogram_tisv():
 
     utter_min_len = (hp.data.tisv_frame * hp.data.hop + hp.data.window) * hp.data.sr    # lower bound of utterance length
     total_speaker_num = len(audio_path)
-    train_speaker_num= (total_speaker_num//10)*9            # split total data 90% train and 10% test
+    #train_speaker_num= (total_speaker_num//10)*9            # split total data 90% train and 10% test
+    train_speaker_num = total_speaker_num # dont need testing
+    num_utterance = 20
     print("total speaker number : %d"%total_speaker_num)
     print("train : %d, test : %d"%(train_speaker_num, total_speaker_num-train_speaker_num))
     for i, folder in enumerate(audio_path):
+        if os.path.basename(folder)[:4] == 'id01': continue # use id01*** to test embedding
         print("%dth speaker processing..."%i)
         utterances_spec = []
-        for utter_name in os.listdir(folder):
-            if utter_name[-4:] == '.WAV':
-                utter_path = os.path.join(folder, utter_name)         # path of each utterance
+        folders = glob.glob(folder+'/*')[:num_utterance] # number of utterance per person
+        for folder in folders:
+          audios = glob.glob(folder+'/*.wav')
+          for utter_name in audios:
+                sigma = 10
+                var_window = stats.truncnorm.rvs(-100/sigma, 100/sigma, loc=300, scale=sigma)
+                utter_path = utter_name         # path of each utterance
                 utter, sr = librosa.core.load(utter_path, hp.data.sr)        # load utterance audio
                 intervals = librosa.effects.split(utter, top_db=30)         # voice activity detection
                 for interval in intervals:
@@ -46,6 +54,7 @@ def save_spectrogram_tisv():
 
         utterances_spec = np.array(utterances_spec)
         print(utterances_spec.shape)
+        if len(utterances_spec) < 11: continue
         if i<train_speaker_num:      # save spectrogram as numpy file
             np.save(os.path.join(hp.data.train_path, "speaker%d.npy"%i), utterances_spec)
         else:

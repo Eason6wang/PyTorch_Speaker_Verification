@@ -71,6 +71,7 @@ def align_embeddings(embeddings):
     for i, partition in enumerate(partitions):
         avg_embeddings[i] = np.average(embeddings[partition[0]:partition[1]],axis=0) 
     return avg_embeddings
+'''
 #dataset path
 audio_path = glob.glob(os.path.dirname(hp.unprocessed_data))  
 
@@ -122,4 +123,4 @@ np.save('test_sequence',train_sequence)
 np.save('test_cluster_id',train_cluster_id)
         
 
-
+'''

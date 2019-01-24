@@ -1,8 +1,10 @@
 TIMIT/
 VOX/
 dev/
-check/
 train_tisv/
 test_tisv/
 *.npy
 *.pth
+tmp/
+ckpt/
+ffm_court.txt

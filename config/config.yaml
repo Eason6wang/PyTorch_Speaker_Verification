@@ -19,7 +19,7 @@ model:
     hidden: 768 #Number of LSTM hidden layer units
     num_layer: 3 #Number of LSTM layers
     proj: 256 #Embedding size
-    model_path: 'check/ckpt_epoch_60_batch_id_1324.pth' #Model path for testing, inference, or resuming training
+    model_path: 'ckpt/600_person_20_uter_epoch_120.pth' #Model path for testing, inference, or resuming training
 ---
 train:
     N : 4 #Number of speakers in batch
@@ -30,7 +30,7 @@ train:
     log_interval: 30 #Epochs before printing progress
     log_file: './logs/log.txt'
     checkpoint_interval: 60 #Save model after x speaker epochs
-    checkpoint_dir: './check'
+    checkpoint_dir: './ckpt'
     restore: !!bool "false" #Resume training from previous model path
 ---
 test:

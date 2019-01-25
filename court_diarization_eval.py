@@ -71,6 +71,7 @@ def run_ffmpeg(ffm_command_path):
 ### Create dvector for each audio
 
 ###########MULTIPROCESSING#########
+'''
 from multiprocessing import Pool
 audio_files = sorted(glob.glob(tmp_dir + '*.wav'), key=lambda x:int(os.path.basename(x)[:-4]))
 
@@ -113,7 +114,7 @@ def para_create_dvectors():
     train_cluster_id = np.asarray(train_cluster_id)
     np.save('court_test_sequence',train_sequence)
     np.save('court_test_cluster_id',train_cluster_id)
-
+'''
 ############SINGLE PRO##############
 def create_dvectors(concat_df, embedder_net, device):
     test_sequences = []
@@ -147,20 +148,35 @@ def create_dvectors(concat_df, embedder_net, device):
     return test_sequences, test_cluster_ids
 
 ### Spectral Clustering
+from multiprocessing import Pool
+def spectral_parallel(sequence):
+    clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
+    labels = clusterer.predict(sequence)
+    return labels
+
 def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     test_size = window_size
     test_sequences = np.array([np.array(test_sequences[i:i + test_size]) for i in range(0, len(test_sequences), test_size)])
     test_cluster_ids = [list(test_cluster_ids[i:i + test_size]) for i in range(0,len(test_cluster_ids),test_size)]
-    index = 1
     accuracy_lst = []
     print("Num of speakers | Num of predicted speakers | Accuracy:")
+    
+    NUM_PROCESSES = 4
+    pool = Pool(NUM_PROCESSES)
+    results = pool.map(spectral_parallel, test_sequences)
+    
+    for true_labels, predicted_labels in zip(test_cluster_ids, results):
+        accuracy = uisrnn.compute_sequence_match_accuracy(list(true_labels), list(predicted_labels))
+        print(str(len(set(cluster_ids))) + "               | " +  str(len(set(predicted_labels))) + '                         | ' + str(accuracy))
+        accuracy_lst.append(accuracy)
+    '''
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
         clusterer = SpectralClusterer(min_clusters=2,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
         labels = clusterer.predict(sequence)
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))
         accuracy_lst.append(accuracy)
-        index += 1
+    '''
     return np.mean(accuracy_lst)
 
 if __name__ == '__main__':
@@ -188,7 +204,7 @@ if __name__ == '__main__':
 
         id_set = set()
         for index, row in df.iterrows():
-          id_set.add(row['speaker'])
+            id_set.add(row['speaker'])
         if len(id_set) < 5: continue
         
         concat_df = concatenate_intervals(df)
@@ -197,13 +213,13 @@ if __name__ == '__main__':
         run_ffmpeg(ffm_path)
         #print("Parallel ffmpeg complete!")
         try:
-          test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
+            test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
         except Exception as e:
-          print(e)
-          print(mp3_file + '!!!')
-          continue
-          shutil.rmtree(tmp_dir)
-          os.makedirs(tmp_dir, exist_ok=True)
+            print(e)
+            print(mp3_file + '!!!')
+            continue
+            shutil.rmtree(tmp_dir)
+            os.makedirs(tmp_dir, exist_ok=True)
         #print("Shape of dvector: " + str(test_sequences.shape))
         #print("Shape of true label: " + str(test_cluster_ids.shape))
         print("Speakers in the audio:" + str(set(test_cluster_ids)))

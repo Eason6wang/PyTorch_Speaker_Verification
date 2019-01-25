@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
         id_set = set()
         for index, row in df.iterrows():
-          id_set.add(row['id'])
+          id_set.add(row['speaker'])
         if len(id_set) < 5: continue
         
         concat_df = concatenate_intervals(df)
@@ -196,7 +196,14 @@ if __name__ == '__main__':
         ffm_path = generate_ffmpeg_commands(concat_df, mp3_file)
         run_ffmpeg(ffm_path)
         #print("Parallel ffmpeg complete!")
-        test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
+        try:
+          test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
+        except Exception as e:
+          print(e)
+          print(mp3_file + '!!!')
+          continue
+          shutil.rmtree(tmp_dir)
+          os.makedirs(tmp_dir, exist_ok=True)
         #print("Shape of dvector: " + str(test_sequences.shape))
         #print("Shape of true label: " + str(test_cluster_ids.shape))
         print("Speakers in the audio:" + str(set(test_cluster_ids)))

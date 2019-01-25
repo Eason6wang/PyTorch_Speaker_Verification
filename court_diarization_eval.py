@@ -172,7 +172,7 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
         accuracy_lst.append(accuracy)
     '''
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
-        clusterer = SpectralClusterer(min_clusters=2,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.3)
+        clusterer = SpectralClusterer(min_clusters=2,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9)
         labels = clusterer.predict(sequence)
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))

@@ -161,6 +161,7 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     accuracy_lst = []
     print("Num of speakers | Num of predicted speakers | Accuracy:")
     
+    '''
     NUM_PROCESSES = 4
     pool = Pool(NUM_PROCESSES)
     results = pool.map(spectral_parallel, test_sequences)
@@ -176,7 +177,6 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))
         accuracy_lst.append(accuracy)
-    '''
     return np.mean(accuracy_lst)
 
 if __name__ == '__main__':
@@ -199,6 +199,7 @@ if __name__ == '__main__':
     
     average_lst = []
     for index, row in eval_csv.iterrows():
+        if index > 10: break # 10 tests
         df = pandas.read_csv(row['csv_file'], delimiter=',')
         mp3_file = row['mp3_file']
 
@@ -228,6 +229,7 @@ if __name__ == '__main__':
         average_lst.append(accuracy)
         shutil.rmtree(tmp_dir)
         os.makedirs(tmp_dir, exist_ok=True)
+        break
 
 
     print("Average accuracy overall:" + str(np.mean(average_lst)))

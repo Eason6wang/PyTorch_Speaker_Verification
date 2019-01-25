@@ -24,6 +24,10 @@ import matplotlib.pyplot as plt
 
 
 tmp_dir = './tmp/'
+shutil.rmtree(tmp_dir)
+os.makedirs(tmp_dir, exist_ok=True)
+
+
 ### Concatenate intervals
 def concatenate_intervals(df):
     concat_df = []

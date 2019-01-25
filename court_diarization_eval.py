@@ -5,7 +5,6 @@ import librosa
 import numpy as np
 import os
 import torch
-
 from hparam import hparam as hp
 from speech_embedder_net import SpeechEmbedder
 from VAD_segments import VAD_chunk
@@ -16,62 +15,59 @@ import pandas
 from tqdm import tqdm
 import shutil
 import sys
+import re
+import subprocess
+from spectralcluster import SpectralClusterer
+import numpy as np
+import uisrnn
+import matplotlib.pyplot as plt
 
-### Initialization
-if sys.argv[4] == 'cuda':
-    device = torch.device('cuda')
-else:
-    device = torch.device('cpu')
-embedder_net = SpeechEmbedder().to(device)
-embedder_net.load_state_dict(torch.load(sys.argv[1]))
-embedder_net.eval()
-train_sequence = []
-train_cluster_id = []
-df = pandas.read_csv(sys.argv[2], delimiter=',')
-mp3_file = sys.argv[3]
+
 tmp_dir = './tmp/'
 shutil.rmtree(tmp_dir)
 os.makedirs(tmp_dir, exist_ok=True)
 
 ### Concatenate intervals
-concat_df = []
-cur_speaker = df.iloc[0]['speaker']
-cur_start = df.iloc[0]['start_time']
-cur_end = df.iloc[0]['stop_time']
-for index, row in df.iterrows():
-    if row['speaker'] == cur_speaker:
-        cur_end = row['stop_time']
+def concatenate_intervals(df):
+    concat_df = []
+    cur_speaker = df.iloc[0]['speaker']
+    cur_start = df.iloc[0]['start_time']
+    cur_end = df.iloc[0]['stop_time']
+    for index, row in df.iterrows():
+        if row['speaker'] == cur_speaker:
+            cur_end = row['stop_time']
+        else:
+            concat_df.append({'speaker':cur_speaker, 'start_time':cur_start, 'stop_time':cur_end })
+            cur_speaker = row['speaker']
+            cur_start = row['start_time']
+            cur_end = row['stop_time']
     else:
         concat_df.append({'speaker':cur_speaker, 'start_time':cur_start, 'stop_time':cur_end })
-        cur_speaker = row['speaker']
-        cur_start = row['start_time']
-        cur_end = row['stop_time']
-else:
-    concat_df.append({'speaker':cur_speaker, 'start_time':cur_start, 'stop_time':cur_end })
-print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")
+    
+    return concat_df
 
 ### Generate ffmpeg commands
-ffm_command_path = tmp_dir + 'ffm_court.txt'
-ffm_file = open(ffm_command_path,'w')
-#for index, row in df.iterrows():
-for index, row in enumerate(concat_df):
-    start = float(row['start_time'])
-    duration = float(row['stop_time']) - start 
-    if duration < 2: continue # skip it if it is too short
-    audio_file = tmp_dir + str(index) + '.wav'
-    bashCommand = "ffmpeg -ss " + str(round(start,2)) + " -t " + str(round(duration,2)) + " -i " + mp3_file + ' -y -ar 16000 ' +  audio_file + ' 2> /dev/null'
-    ffm_file.write(bashCommand + '\n')
-ffm_file.close()
+def generate_ffmpeg_commands(concat_df, mp3_file):
+    ffm_command_path = tmp_dir + 'ffm_court.txt'
+    ffm_file = open(ffm_command_path,'w')
+    for index, row in enumerate(concat_df):
+        start = float(row['start_time'])
+        duration = float(row['stop_time']) - start 
+        if duration < 2: continue # skip it if it is too short
+        audio_file = tmp_dir + str(index) + '.wav'
+        bashCommand = "ffmpeg -ss " + str(round(start,2)) + " -t " + str(round(duration,2)) + " -i " + mp3_file + ' -y -ar 16000 ' +  audio_file + ' 2> /dev/null'
+        ffm_file.write(bashCommand + '\n')
+    ffm_file.close()
+    return ffm_command_path
 
 ### Run ffmpeg in parallel
-import subprocess
-bashCommand = "parallel -j 50 :::: " + ffm_command_path
-process = subprocess.Popen(bashCommand.split())#, stdout=None)#subprocess.PIPE)
-output, error = process.communicate()
-print("Parallel ffmpeg complete!")
+def run_ffmpeg(ffm_command_path):
+    bashCommand = "parallel -j 50 :::: " + ffm_command_path
+    process = subprocess.Popen(bashCommand.split())#, stdout=None)#subprocess.PIPE)
+    output, error = process.communicate()
+    
 
 ### Create dvector for each audio
-import re
 
 ###########MULTIPROCESSING#########
 from multiprocessing import Pool
@@ -112,9 +108,15 @@ def para_create_dvectors():
         train_sequence.append(res[0])
         for embedding in res[0]:
             train_cluster_id.append(res[1])
+    train_sequence = np.concatenate(train_sequence,axis=0)
+    train_cluster_id = np.asarray(train_cluster_id)
+    np.save('court_test_sequence',train_sequence)
+    np.save('court_test_cluster_id',train_cluster_id)
 
 ############SINGLE PRO##############
-def create_dvectors():
+def create_dvectors(concat_df, embedder_net, device):
+    test_sequences = []
+    test_cluster_ids = []
     audio_files = sorted(glob.glob(tmp_dir + '*.wav'), key=lambda x:int(os.path.basename(x)[:-4]))
     vis_file = open(tmp_dir + "visualization.csv","a+")
     for audio_file in tqdm(audio_files):
@@ -136,47 +138,66 @@ def create_dvectors():
         STFT_frames = torch.tensor(np.transpose(STFT_frames, axes=(2,1,0))).to(device)
         embeddings = embedder_net(STFT_frames) ### slow
         aligned_embeddings = align_embeddings(embeddings.detach().cpu().numpy())
-        train_sequence.append(aligned_embeddings)
+        test_sequences.append(aligned_embeddings)
         for embedding in aligned_embeddings:
-            train_cluster_id.append(speaker_name)
-
-#para_create_dvectors() not in use now
-create_dvectors()
-
-### Saving dvectors
-train_sequence = np.concatenate(train_sequence,axis=0)
-train_cluster_id = np.asarray(train_cluster_id)
-np.save('court_test_sequence',train_sequence)
-np.save('court_test_cluster_id',train_cluster_id)
-print("Shape of dvector: " + str(train_sequence.shape))
-print("Shape of true label: " + str(train_cluster_id.shape))
-
-print("Speakers in the audio:")
-print(set(train_cluster_id))
+            test_cluster_ids.append(speaker_name)
+    test_sequences = np.concatenate(test_sequences,axis=0)
+    test_cluster_ids = np.asarray(test_cluster_ids)
+    return test_sequences, test_cluster_ids
 
 ### Spectral Clustering
-from spectralcluster import SpectralClusterer
-import numpy as np
-import uisrnn
-import matplotlib.pyplot as plt
+def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
+    test_size = window_size
+    test_sequences = np.array([np.array(test_sequences[i:i + test_size]) for i in range(0, len(test_sequences), test_size)])
+    test_cluster_ids = [list(test_cluster_ids[i:i + test_size]) for i in range(0,len(test_cluster_ids),test_size)]
+    index = 1
+    accuracy_lst = []
+    print("Num of speakers | Num of predicted speakers:")
+    for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
+        clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
+        labels = clusterer.predict(sequence)
+        print('              ' + str(len(set(cluster_ids))) + " | " +  str(len(set(labels))))
+        accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
+        accuracy_lst.append(accuracy)
+        index += 1
+    return np.mean(accuracy_lst)
 
-test_sequences = np.load('court_test_sequence.npy')
-test_cluster_ids = np.load('court_test_cluster_id.npy')
-test_size = 1500
-test_sequences = np.array([np.array(test_sequences[i:i + test_size]) for i in range(0, len(test_sequences), test_size)])
-test_cluster_ids = [list(test_cluster_ids[i:i + test_size]) for i in range(0,len(test_cluster_ids),test_size)]
-index = 1
-accuracy_lst = []
-for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
-    print("######## TEST " + str(index) + " #######")
-    print("Num of true labels:" + str(len(set(cluster_ids))))
-    clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
-    labels = clusterer.predict(sequence)
-    print("Num of predicted labels:" + str(len(set(labels))))
-    accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
-    accuracy_lst.append(accuracy)
-    print("Accuracy:" + str(accuracy))
-    index += 1
-print('Average accuracy:' + str(np.mean(accuracy_lst)))
+if __name__ == '__main__':
+    
+    #argv
+    #1: ckpt
+    #2: eval_csv
+    #3: cuda
+    ### Initialization
+    if sys.argv[3] == 'cuda':
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+    embedder_net = SpeechEmbedder().to(device)
+    embedder_net.load_state_dict(torch.load(sys.argv[1]))
+    embedder_net.eval()
 
-
+    eval_csv = pandas.read_csv(sys.argv[2], delimiter=',')
+    
+    average_lst = []
+    for index, row in eval_csv.iterrows():
+        df = pandas.read_csv(row['csv_file'], delimiter=',')
+        mp3_file = row['mp3_file']
+        
+        concat_df = concatenate_intervals(df)
+        print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")
+        ffm_path = generate_ffmpeg_commands(concat_df, mp3_file)
+        run_ffmpeg(ffm_path)
+        print("Parallel ffmpeg complete!")
+        test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
+        print("Shape of dvector: " + str(test_sequences.shape))
+        print("Shape of true label: " + str(test_cluster_ids.shape))
+        print("Speakers in the audio:")
+        print(set(test_cluster_ids))
+        accuracy = spectral_eval(test_sequences, test_cluster_ids)
+        print("Accuracy of " + os.path.basename(mp3_file) + ":" + str(accuracy))
+        average_lst.append(accuracy)
+        break
+    print("Average accuracy overall:" + str(np.mean(average_lst)))
+    
+    

@@ -155,7 +155,7 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     accuracy_lst = []
     print("Num of speakers | Num of predicted speakers | Accuracy:")
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
-        clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
+        clusterer = SpectralClusterer(min_clusters=2,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
         labels = clusterer.predict(sequence)
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))
@@ -185,6 +185,11 @@ if __name__ == '__main__':
     for index, row in eval_csv.iterrows():
         df = pandas.read_csv(row['csv_file'], delimiter=',')
         mp3_file = row['mp3_file']
+
+        id_set = set()
+        for index, row in df.iterrows():
+          id_set.add(row['id'])
+        if len(id_set) < 5: continue
         
         concat_df = concatenate_intervals(df)
         #print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")

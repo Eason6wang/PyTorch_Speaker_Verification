@@ -96,7 +96,7 @@ def para_create(audio_file):
 def para_create_dvectors():
     NUM_PROCESSES = 4
     pool = Pool(NUM_PROCESSES)
-    results = pool.map(parall_create_dvectors, audio_files)
+    results = pool.map(para_create, audio_files)
 
     results = [res for res in results if res]
     for res in results:

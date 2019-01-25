@@ -15,15 +15,16 @@ from dvector_vis import visualization
 import pandas
 from tqdm import tqdm
 import shutil
+import sys
 
 ### Initialization
 embedder_net = SpeechEmbedder()
-embedder_net.load_state_dict(torch.load('../ckpt/ckpt_epoch_180_batch_id_1324.pth'))
+embedder_net.load_state_dict(torch.load(sys.argv[1]))
 embedder_net.eval()
 train_sequence = []
 train_cluster_id = []
-df = pandas.read_csv("/Users/junhengwang/coop/court_data/02976.csv", delimiter=',')
-mp3_file = '/Users/junhengwang/coop/court_data/2976.mp3'
+df = pandas.read_csv(sys.argv[2], delimiter=',')
+mp3_file = sys.argv[3]
 tmp_dir = './tmp/'
 shutil.rmtree(tmp_dir)
 os.makedirs(tmp_dir, exist_ok=True)
@@ -43,7 +44,7 @@ for index, row in df.iterrows():
         cur_end = row['stop_time']
 else:
     concat_df.append({'speaker':cur_speaker, 'start_time':cur_start, 'stop_time':cur_end })
-print(len(concat_df))
+print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")
 
 ### Generate ffmpeg commands
 ffm_command_path = tmp_dir + 'ffm_court.txt'
@@ -54,17 +55,16 @@ for index, row in enumerate(concat_df):
     duration = float(row['stop_time']) - start 
     if duration < 2: continue # skip it if it is too short
     audio_file = tmp_dir + str(index) + '.wav'
-    bashCommand = "ffmpeg -ss " + str(round(start,2)) + " -t " + str(round(duration,2)) + " -i " + mp3_file + ' -y -ar 16000 ' +  audio_file
+    bashCommand = "ffmpeg -ss " + str(round(start,2)) + " -t " + str(round(duration,2)) + " -i " + mp3_file + ' -y -ar 16000 ' +  audio_file + ' 2> /dev/null'
     ffm_file.write(bashCommand + '\n')
 ffm_file.close()
 
 ### Run ffmpeg in parallel
 import subprocess
 bashCommand = "parallel -j 50 :::: " + ffm_command_path
-process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+process = subprocess.Popen(bashCommand.split())#, stdout=None)#subprocess.PIPE)
 output, error = process.communicate()
-print(output)
-print(error)
+print("Parallel ffmpeg complete!")
 
 ### Create dvector for each audio
 import re
@@ -108,10 +108,10 @@ train_sequence = np.concatenate(train_sequence,axis=0)
 train_cluster_id = np.asarray(train_cluster_id)
 np.save('court_test_sequence',train_sequence)
 np.save('court_test_cluster_id',train_cluster_id)
-print(train_sequence.shape)
-print(train_cluster_id.shape)
+print("Shape of dvector: " + str(train_sequence.shape))
+print("Shape of true label: " + str(train_cluster_id.shape))
 
-print("Speakers:")
+print("Speakers in the audio:")
 print(set(train_cluster_id))
 
 ### Spectral Clustering
@@ -138,8 +138,6 @@ for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
     print("Accuracy:" + str(accuracy))
     index += 1
 print('Average accuracy:' + str(np.mean(accuracy_lst)))
-
-visualization(tmp_dir + 'visualization.csv', 3000)
 
 '''
 MULTIPROCESSING

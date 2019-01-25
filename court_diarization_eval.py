@@ -152,12 +152,12 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     test_cluster_ids = [list(test_cluster_ids[i:i + test_size]) for i in range(0,len(test_cluster_ids),test_size)]
     index = 1
     accuracy_lst = []
-    print("Num of speakers | Num of predicted speakers:")
+    print("Num of speakers | Num of predicted speakers | Accuracy:")
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
         clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
         labels = clusterer.predict(sequence)
-        print('              ' + str(len(set(cluster_ids))) + " | " +  str(len(set(labels))))
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
+        print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))
         accuracy_lst.append(accuracy)
         index += 1
     return np.mean(accuracy_lst)
@@ -169,6 +169,7 @@ if __name__ == '__main__':
     #2: eval_csv
     #3: cuda
     ### Initialization
+    print('############# ' + os.path.basename(str(sys.argv[1])) + ' #############')
     if sys.argv[3] == 'cuda':
         device = torch.device('cuda')
     else:
@@ -185,15 +186,14 @@ if __name__ == '__main__':
         mp3_file = row['mp3_file']
         
         concat_df = concatenate_intervals(df)
-        print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")
+        #print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")
         ffm_path = generate_ffmpeg_commands(concat_df, mp3_file)
         run_ffmpeg(ffm_path)
-        print("Parallel ffmpeg complete!")
+        #print("Parallel ffmpeg complete!")
         test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
-        print("Shape of dvector: " + str(test_sequences.shape))
-        print("Shape of true label: " + str(test_cluster_ids.shape))
-        print("Speakers in the audio:")
-        print(set(test_cluster_ids))
+        #print("Shape of dvector: " + str(test_sequences.shape))
+        #print("Shape of true label: " + str(test_cluster_ids.shape))
+        print("Speakers in the audio:" + str(set(test_cluster_ids)))
         accuracy = spectral_eval(test_sequences, test_cluster_ids)
         print("Accuracy of " + os.path.basename(mp3_file) + ":" + str(accuracy))
         average_lst.append(accuracy)

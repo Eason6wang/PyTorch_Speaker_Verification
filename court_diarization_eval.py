@@ -18,7 +18,8 @@ import shutil
 import sys
 
 ### Initialization
-embedder_net = SpeechEmbedder()
+device = torch.device('cuda')
+embedder_net = SpeechEmbedder().to(device)
 embedder_net.load_state_dict(torch.load(sys.argv[1]))
 embedder_net.eval()
 train_sequence = []
@@ -89,15 +90,18 @@ def para_create(audio_file):
         print('No STFT frames extracted in ' + audio_file)
         return
     STFT_frames = np.stack(STFT_frames, axis=2)
-    STFT_frames = torch.tensor(np.transpose(STFT_frames, axes=(2,1,0)))
+    STFT_frames = torch.tensor(np.transpose(STFT_frames, axes=(2,1,0))).to(device)
+    #STFT_frames = torch.tensor(np.transpose(STFT_frames, axes=(2,1,0)), device=device)
+
     embeddings = embedder_net(STFT_frames)
-    aligned_embeddings = align_embeddings(embeddings.detach().numpy())
+    aligned_embeddings = align_embeddings(embeddings.detach().cpu().numpy())
     return aligned_embeddings, speaker_name
 def para_create_dvectors():
     NUM_PROCESSES = 4
     pool = Pool(NUM_PROCESSES)
     results = pool.map(para_create, audio_files)
-
+    #for _ in tqdm(pool.imap_unordered(para_create, audio_files), total=len(audio_files)):
+    #    pass
     results = [res for res in results if res]
     for res in results:
         # for clustering
@@ -126,9 +130,9 @@ def create_dvectors():
             print('No STFT frames extracted in ' + audio_file)
             continue
         STFT_frames = np.stack(STFT_frames, axis=2)
-        STFT_frames = torch.tensor(np.transpose(STFT_frames, axes=(2,1,0)))
+        STFT_frames = torch.tensor(np.transpose(STFT_frames, axes=(2,1,0))).to(device)
         embeddings = embedder_net(STFT_frames) ### slow
-        aligned_embeddings = align_embeddings(embeddings.detach().numpy())
+        aligned_embeddings = align_embeddings(embeddings.detach().cpu().numpy())
         train_sequence.append(aligned_embeddings)
         for embedding in aligned_embeddings:
             train_cluster_id.append(speaker_name)

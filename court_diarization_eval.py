@@ -229,7 +229,6 @@ if __name__ == '__main__':
         average_lst.append(accuracy)
         shutil.rmtree(tmp_dir)
         os.makedirs(tmp_dir, exist_ok=True)
-        break
 
 
     print("Average accuracy overall:" + str(np.mean(average_lst)))

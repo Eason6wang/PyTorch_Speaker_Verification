@@ -18,7 +18,10 @@ import shutil
 import sys
 
 ### Initialization
-device = torch.device('cuda')
+if sys.argv[4] == 'cuda':
+    device = torch.device('cuda')
+else:
+    device = torch.device('cpu')
 embedder_net = SpeechEmbedder().to(device)
 embedder_net.load_state_dict(torch.load(sys.argv[1]))
 embedder_net.eval()
@@ -137,10 +140,8 @@ def create_dvectors():
         for embedding in aligned_embeddings:
             train_cluster_id.append(speaker_name)
 
-if sys.argv[4] == 'TRUE':
-  para_create_dvectors()
-else:
-  create_dvectors()
+#para_create_dvectors() not in use now
+create_dvectors()
 
 ### Saving dvectors
 train_sequence = np.concatenate(train_sequence,axis=0)

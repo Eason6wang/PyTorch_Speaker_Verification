@@ -24,9 +24,6 @@ import matplotlib.pyplot as plt
 
 
 tmp_dir = './tmp/'
-shutil.rmtree(tmp_dir)
-os.makedirs(tmp_dir, exist_ok=True)
-
 ### Concatenate intervals
 def concatenate_intervals(df):
     concat_df = []
@@ -197,6 +194,10 @@ if __name__ == '__main__':
         accuracy = spectral_eval(test_sequences, test_cluster_ids)
         print("Accuracy of " + os.path.basename(mp3_file) + ":" + str(accuracy))
         average_lst.append(accuracy)
+        shutil.rmtree(tmp_dir)
+        os.makedirs(tmp_dir, exist_ok=True)
+
+
     print("Average accuracy overall:" + str(np.mean(average_lst)))
     
     

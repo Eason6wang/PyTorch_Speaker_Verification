@@ -197,7 +197,6 @@ if __name__ == '__main__':
         accuracy = spectral_eval(test_sequences, test_cluster_ids)
         print("Accuracy of " + os.path.basename(mp3_file) + ":" + str(accuracy))
         average_lst.append(accuracy)
-        break
     print("Average accuracy overall:" + str(np.mean(average_lst)))
     
     

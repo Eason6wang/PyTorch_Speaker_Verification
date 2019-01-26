@@ -32,7 +32,8 @@ class SpectralClusterer(object):
             p_percentile=0.95,
             thresholding_soft_multiplier=0.01,
             stop_eigenvalue=1e-2,
-            refinement_sequence=DEFAULT_REFINEMENT_SEQUENCE):
+            refinement_sequence=DEFAULT_REFINEMENT_SEQUENCE,
+            cosine=True):
         """Constructor of the clusterer.
 
         Args:
@@ -58,6 +59,7 @@ class SpectralClusterer(object):
         self.thresholding_soft_multiplier = thresholding_soft_multiplier
         self.stop_eigenvalue = stop_eigenvalue
         self.refinement_sequence = refinement_sequence
+        self.cosine = cosine
 
     def _get_refinement_operator(self, name):
         """Get the refinement operator.
@@ -137,8 +139,8 @@ class SpectralClusterer(object):
             #return euclidean_distances(X,Y)
             return cosine_distances(X,Y)
         
-
-        k_means_.euclidean_distances = cosine_dist
+        if self.cosine:
+            k_means_.euclidean_distances = cosine_dist
         
         kmeans_clusterer = k_means_.KMeans(
             n_clusters=k,

@@ -148,12 +148,6 @@ def create_dvectors(concat_df, embedder_net, device):
     return test_sequences, test_cluster_ids
 
 ### Spectral Clustering
-from multiprocessing import Pool
-def spectral_parallel(sequence):
-    clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=2)
-    labels = clusterer.predict(sequence)
-    return labels
-
 def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     test_size = window_size
     test_sequences = np.array([np.array(test_sequences[i:i + test_size]) for i in range(0, len(test_sequences), test_size)])
@@ -162,7 +156,7 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     print("Num of speakers | Num of predicted speakers | Accuracy:")
     
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
-        clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9)
+        clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9,cosine=True)
         labels = clusterer.predict(sequence)
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))

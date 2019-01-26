@@ -9,7 +9,7 @@ from spectralcluster import utils
 
 from sklearn.cluster import k_means_
 
-from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
+from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 from sklearn.preprocessing import StandardScaler
 
 
@@ -134,7 +134,9 @@ class SpectralClusterer(object):
         
         # Manually override euclidean
         def cosine_dist(X, Y = None, Y_norm_squared = None, squared = False):
-            return cosine_similarity(X)
+            #return euclidean_distances(X,Y)
+            return cosine_distances(X,Y)
+        
 
         k_means_.euclidean_distances = cosine_dist
         

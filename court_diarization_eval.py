@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 
 tmp_dir = './tmp/'
-shutil.rmtree(tmp_dir)
+shutil.rmtree(tmp_dir, ignore_errors=True)
 os.makedirs(tmp_dir, exist_ok=True)
 
 

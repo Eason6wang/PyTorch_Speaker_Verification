@@ -161,18 +161,8 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     accuracy_lst = []
     print("Num of speakers | Num of predicted speakers | Accuracy:")
     
-    '''
-    NUM_PROCESSES = 4
-    pool = Pool(NUM_PROCESSES)
-    results = pool.map(spectral_parallel, test_sequences)
-    
-    for true_labels, predicted_labels in zip(test_cluster_ids, results):
-        accuracy = uisrnn.compute_sequence_match_accuracy(list(true_labels), list(predicted_labels))
-        print(str(len(set(cluster_ids))) + "               | " +  str(len(set(predicted_labels))) + '                         | ' + str(accuracy))
-        accuracy_lst.append(accuracy)
-    '''
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
-        clusterer = SpectralClusterer(min_clusters=2,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9)
+        clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9)
         labels = clusterer.predict(sequence)
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))
@@ -209,10 +199,8 @@ if __name__ == '__main__':
         if len(id_set) < 5: continue
         
         concat_df = concatenate_intervals(df)
-        #print("Concatenation complete: got " + str(len(concat_df)) + " chunks of audio in total")
         ffm_path = generate_ffmpeg_commands(concat_df, mp3_file)
         run_ffmpeg(ffm_path)
-        #print("Parallel ffmpeg complete!")
         try:
             test_sequences, test_cluster_ids = create_dvectors(concat_df, embedder_net, device)
         except Exception as e:
@@ -221,8 +209,6 @@ if __name__ == '__main__':
             continue
             shutil.rmtree(tmp_dir)
             os.makedirs(tmp_dir, exist_ok=True)
-        #print("Shape of dvector: " + str(test_sequences.shape))
-        #print("Shape of true label: " + str(test_cluster_ids.shape))
         print("Speakers in the audio:" + str(set(test_cluster_ids)))
         accuracy = spectral_eval(test_sequences, test_cluster_ids)
         print("Accuracy of " + os.path.basename(mp3_file) + ":" + str(accuracy))

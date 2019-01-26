@@ -3,9 +3,14 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 from spectralcluster import refinement
 from spectralcluster import utils
+
+from sklearn.cluster import k_means_
+
+from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
+from sklearn.preprocessing import StandardScaler
 
 
 DEFAULT_REFINEMENT_SEQUENCE = [
@@ -126,7 +131,14 @@ class SpectralClusterer(object):
         # that supports customized distance measure such as cosine distance.
         # This implemention from scikit-learn does NOT, which is inconsistent
         # with the paper.
-        kmeans_clusterer = KMeans(
+        
+        # Manually override euclidean
+        def cosine_dist(X, Y = None, Y_norm_squared = None, squared = False):
+            return cosine_similarity(X)
+
+        k_means_.euclidean_distances = cosine_dist
+        
+        kmeans_clusterer = k_means_.KMeans(
             n_clusters=k,
             init="k-means++",
             max_iter=300,

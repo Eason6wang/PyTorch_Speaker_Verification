@@ -3,12 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-#from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans
 from spectralcluster import refinement
 from spectralcluster import utils
 
-from sklearn.cluster import k_means_
-
+from skmeans import SKMeans
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 from sklearn.preprocessing import StandardScaler
 
@@ -135,17 +134,28 @@ class SpectralClusterer(object):
         # with the paper.
         
         # Manually override euclidean
+        '''
         def cosine_dist(X, Y = None, Y_norm_squared = None, squared = False):
+            #print(euclidean_distances(X,Y))
             #return euclidean_distances(X,Y)
-            return cosine_distances(X,Y)
-        
+            print(cosine_distances(X,Y))
+            return np.ones(cosine_distances(X,Y).shape)
         if self.cosine:
             k_means_.euclidean_distances = cosine_dist
-        
-        kmeans_clusterer = k_means_.KMeans(
-            n_clusters=k,
-            init="k-means++",
-            max_iter=300,
-            random_state=0)
-        labels = kmeans_clusterer.fit_predict(spectral_embeddings)
+        kmeans = k_means_.KMeans(n_clusters = k, init="k-means++", max_iter=300, random_state = 0)
+        spectral_embeddings = StandardScaler(with_mean=False).fit_transform(spectral_embeddings)
+        _ = kmeans.fit(spectral_embeddings)
+        labels = kmeans.labels_
+        '''
+        if self.cosine:
+            kmeans_inst = SKMeans(k,iters=15)
+            kmeans_inst.fit(spectral_embeddings,two_pass=True)
+            labels = kmeans_inst.get_labels()
+        else:
+            kmeans_clusterer = KMeans(
+                n_clusters=k,
+                init="k-means++",
+                max_iter=300,
+                random_state=0)
+            labels = kmeans_clusterer.fit_predict(spectral_embeddings)
         return labels

@@ -9,7 +9,7 @@ from hparam import hparam as hp
 import random
 import scipy.stats as stats
 # downloaded dataset path
-audio_path = glob.glob('./dev/*')
+audio_path = glob.glob('/data5/xin/voxceleb/raw_data/dev/*')
 
 def save_spectrogram_tisv():
     """ Full preprocess of text independent utterance. The log-mel-spectrogram is saved as numpy file.
@@ -24,7 +24,7 @@ def save_spectrogram_tisv():
     utter_min_len = (hp.data.tisv_frame * hp.data.hop + hp.data.window) * hp.data.sr    # lower bound of utterance length
     total_speaker_num = len(audio_path)
     #train_speaker_num= (total_speaker_num//10)*9            # split total data 90% train and 10% test
-    train_speaker_num = total_speaker_num # dont need testing
+    train_speaker_num = int(total_speaker_num * 0.95) 
     num_utterance = 20
     print("total speaker number : %d"%total_speaker_num)
     print("train : %d, test : %d"%(train_speaker_num, total_speaker_num-train_speaker_num))
@@ -32,7 +32,7 @@ def save_spectrogram_tisv():
         if os.path.basename(folder)[:4] == 'id01': continue # use id01*** to test embedding
         print("%dth speaker processing..."%i)
         utterances_spec = []
-        folders = glob.glob(folder+'/*')[:num_utterance] # number of utterance per person
+        folders = glob.glob(folder+'/*')
         for folder in folders:
           audios = glob.glob(folder+'/*.wav')
           for utter_name in audios:

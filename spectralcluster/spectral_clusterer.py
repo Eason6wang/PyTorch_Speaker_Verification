@@ -144,7 +144,8 @@ class SpectralClusterer(object):
                 n_clusters=k,
                 init="k-means++",
                 max_iter=300,
-                random_state=0)
+                random_state=0,
+                n_jobs=4)
             kmeans_clusterer.fit(spectral_embeddings)
             labels = kmeans_clusterer.labels_
         else:
@@ -152,6 +153,7 @@ class SpectralClusterer(object):
                 n_clusters=k,
                 init="k-means++",
                 max_iter=300,
-                random_state=0)
+                random_state=0,
+                n_jobs=4)
             labels = kmeans_clusterer.fit_predict(spectral_embeddings)
         return labels

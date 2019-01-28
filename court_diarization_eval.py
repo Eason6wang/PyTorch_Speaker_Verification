@@ -156,10 +156,12 @@ def spectral_eval(test_sequences, test_cluster_ids, window_size=1500):
     print("Num of speakers | Num of predicted speakers | Accuracy:")
     
     for sequence, cluster_ids in zip(test_sequences, test_cluster_ids):
-        if sys.argv[4] == 'cosine':
-            clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9,cosine=True)
+        if sys.argv[4] == 'skmeans':
+            clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9,metric='skmeans')
+        elif sys.argv[4] == 'spherical':
+            clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9,metric='spherical')
         else:
-            clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9,cosine=False)
+            clusterer = SpectralClusterer(min_clusters=3,max_clusters=20,p_percentile=0.92,gaussian_blur_sigma=1.9,metric='euclidean')
         labels = clusterer.predict(sequence)
         accuracy = uisrnn.compute_sequence_match_accuracy(list(cluster_ids), list(labels))
         print(str(len(set(cluster_ids))) + "               | " +  str(len(set(labels))) + '                         | ' + str(accuracy))

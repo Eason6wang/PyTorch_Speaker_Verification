@@ -8,6 +8,7 @@ from spectralcluster import refinement
 from spectralcluster import utils
 
 from skmeans import SKMeans
+from spherecluster import SphericalKMeans
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 from sklearn.preprocessing import StandardScaler
 
@@ -32,7 +33,7 @@ class SpectralClusterer(object):
             thresholding_soft_multiplier=0.01,
             stop_eigenvalue=1e-2,
             refinement_sequence=DEFAULT_REFINEMENT_SEQUENCE,
-            cosine=True):
+            metric='skmeans'):
         """Constructor of the clusterer.
 
         Args:
@@ -58,7 +59,7 @@ class SpectralClusterer(object):
         self.thresholding_soft_multiplier = thresholding_soft_multiplier
         self.stop_eigenvalue = stop_eigenvalue
         self.refinement_sequence = refinement_sequence
-        self.cosine = cosine
+        self.metric = metric
 
     def _get_refinement_operator(self, name):
         """Get the refinement operator.
@@ -134,23 +135,18 @@ class SpectralClusterer(object):
         # with the paper.
         
         # Manually override euclidean
-        '''
-        def cosine_dist(X, Y = None, Y_norm_squared = None, squared = False):
-            #print(euclidean_distances(X,Y))
-            #return euclidean_distances(X,Y)
-            print(cosine_distances(X,Y))
-            return np.ones(cosine_distances(X,Y).shape)
-        if self.cosine:
-            k_means_.euclidean_distances = cosine_dist
-        kmeans = k_means_.KMeans(n_clusters = k, init="k-means++", max_iter=300, random_state = 0)
-        spectral_embeddings = StandardScaler(with_mean=False).fit_transform(spectral_embeddings)
-        _ = kmeans.fit(spectral_embeddings)
-        labels = kmeans.labels_
-        '''
-        if self.cosine:
-            kmeans_inst = SKMeans(k,iters=15)
-            kmeans_inst.fit(spectral_embeddings,two_pass=True)
-            labels = kmeans_inst.get_labels()
+        if self.metric == 'skmeans':
+            kmeans_clusterer = SKMeans(k,iters=15)
+            kmeans_clusterer.fit(spectral_embeddings,two_pass=True)
+            labels = kmeans_clusterer.get_labels()
+        elif self.metric == 'spherical':
+            kmeans_clusterer = SphericalKMeans(
+                n_clusters=k,
+                init="k-means++",
+                max_iter=300,
+                random_state=0)
+            kmeans_clusterer.fit(spectral_embeddings)
+            labels = kmeans_clusterer.labels_
         else:
             kmeans_clusterer = KMeans(
                 n_clusters=k,

@@ -22,15 +22,15 @@ model:
     model_path: 'ckpt/600_person_20_uter_epoch_120.pth' #Model path for testing, inference, or resuming training
 ---
 train:
-    N : 4 #Number of speakers in batch
+    N : 64 #Number of speakers in batch
     M : 10 #Number of utterances per speaker
     num_workers: 8 #number of workers for data laoder
     lr: 0.01
     epochs: 950 #Max training speaker epoch 
     log_interval: 30 #Epochs before printing progress
-    log_file: './logs/log.txt'
+    log_file: '/data5/eason/court/logs/log.txt'
     checkpoint_interval: 60 #Save model after x speaker epochs
-    checkpoint_dir: './ckpt'
+    checkpoint_dir: '/data5/eason/court/ckpt/64_batch_size/'
     restore: !!bool "false" #Resume training from previous model path
 ---
 test:

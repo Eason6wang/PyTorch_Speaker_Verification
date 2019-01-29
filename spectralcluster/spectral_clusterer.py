@@ -8,7 +8,8 @@ from spectralcluster import refinement
 from spectralcluster import utils
 
 from skmeans import SKMeans
-from spherecluster import SphericalKMeans
+from spherecluster import SphericalKMeans,VonMisesFisherMixture
+from sklearn.mixture import GaussianMixture
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 from sklearn.preprocessing import StandardScaler
 
@@ -135,6 +136,8 @@ class SpectralClusterer(object):
         # with the paper.
         
         # Manually override euclidean
+        n_jobs = 1
+        
         if self.metric == 'skmeans':
             kmeans_clusterer = SKMeans(k,iters=15)
             kmeans_clusterer.fit(spectral_embeddings,two_pass=True)
@@ -145,15 +148,26 @@ class SpectralClusterer(object):
                 init="k-means++",
                 max_iter=300,
                 random_state=0,
-                n_jobs=4)
+                n_jobs=n_jobs)
             kmeans_clusterer.fit(spectral_embeddings)
             labels = kmeans_clusterer.labels_
-        else:
+        elif self.metric == 'gaussian':
+            clusterer = GaussianMixture(
+                n_components=k,
+                covariance_type="tied",
+                max_iter=300,
+                warm_start=True,
+                random_state=0)
+            labels = clusterer.fit_predict(spectral_embeddings)
+        elif self.metric == 'kmeans':
             kmeans_clusterer = KMeans(
                 n_clusters=k,
                 init="k-means++",
                 max_iter=300,
                 random_state=0,
-                n_jobs=4)
+                n_jobs=n_jobs)
             labels = kmeans_clusterer.fit_predict(spectral_embeddings)
+        else:
+            labels = None
+            print("metric name is wrong")
         return labels

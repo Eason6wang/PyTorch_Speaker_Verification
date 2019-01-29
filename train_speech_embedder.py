@@ -50,6 +50,7 @@ def train(model_path, tensorboard_writer):
                     {'params': embedder_net.parameters()},
                     {'params': ge2e_loss.parameters()}
                 ], lr=hp.train.lr)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=hp.train.epochs, eta_min=4e-08)
     
     os.makedirs(hp.train.checkpoint_dir, exist_ok=True)
     
@@ -58,6 +59,19 @@ def train(model_path, tensorboard_writer):
     best_EER = float('inf')
     for e in range(start_epoch, hp.train.epochs):
         print('==> epochs', e)
+
+        scheduler.step(e)
+        current_lr = optimizer.state_dict()['param_groups'][0]['lr']
+        print('==> Learning rate: {lr:.6f}'.format(lr=current_lr))
+
+        # # Note(xin): step decay
+        # if e != 0 and e % hp.train.lr_decay == 0:
+        #     optim_state = optimizer.state_dict()
+        #     optim_state['param_groups'][0]['lr'] = optim_state['param_groups'][0]['lr'] * 0.5
+        #     optimizer.load_state_dict(optim_state)
+        #     print('Learning rate decayed to: {lr:.6f}'.format(lr=optim_state['param_groups'][0]['lr']))
+
+        tensorboard_writer.add_scalars('learning_rate', {'learning_rate': current_lr}, e + 1)
 
         total_loss = 0
         for batch_id, mel_db_batch in enumerate(train_loader): 

@@ -145,47 +145,54 @@ def train(model_path, tensorboard_writer):
     
     print("\nDone, trained model saved at", save_model_path)
 
+def test(model_path, embedder_net=None, test_loader=None):
+    device = torch.device(hp.device)
 
+    if not embedder_net:
+        if hp.data.data_preprocessed:
+            test_dataset = SpeakerDatasetTIMITPreprocessed(test_mode=True)
+        else:
+            test_dataset = SpeakerDatasetTIMIT(test_mode=True)
+        test_loader = DataLoader(test_dataset, batch_size=hp.test.N, shuffle=True, num_workers=hp.test.num_workers, drop_last=True)
 
-def test(model_path):
-    
-    if hp.data.data_preprocessed:
-        test_dataset = SpeakerDatasetTIMITPreprocessed()
-    else:
-        test_dataset = SpeakerDatasetTIMIT()
-    test_loader = DataLoader(test_dataset, batch_size=hp.test.N, shuffle=True, num_workers=hp.test.num_workers, drop_last=True)
-    
-    embedder_net = SpeechEmbedder()
-    embedder_net.load_state_dict(torch.load(model_path))
-    embedder_net.eval()
+        if not model_path:
+            raise Exception('==> Model path needs to be specified')
+
+        embedder_net = SpeechEmbedder().to(device)
+        embedder_net.load_state_dict(torch.load(model_path))
+        embedder_net.eval()
     
     avg_EER = 0
     for e in range(hp.test.epochs):
+        print('==> epochs', e)
+
         batch_avg_EER = 0
-        for batch_id, mel_db_batch in enumerate(test_loader):
+        for batch_id, mel_db_batch in tqdm(enumerate(test_loader)):
+            mel_db_batch = mel_db_batch.to(device)
+
             assert hp.test.M % 2 == 0
             enrollment_batch, verification_batch = torch.split(mel_db_batch, int(mel_db_batch.size(1)/2), dim=1)
             
-            enrollment_batch = torch.reshape(enrollment_batch, (hp.test.N*hp.test.M//2, enrollment_batch.size(2), enrollment_batch.size(3)))
-            verification_batch = torch.reshape(verification_batch, (hp.test.N*hp.test.M//2, verification_batch.size(2), verification_batch.size(3)))
+            enrollment_batch = torch.reshape(enrollment_batch, (int(hp.test.N*hp.test.M/2), enrollment_batch.size(2), enrollment_batch.size(3)))
+            verification_batch = torch.reshape(verification_batch, (int(hp.test.N*hp.test.M/2), verification_batch.size(2), verification_batch.size(3)))
             
             perm = random.sample(range(0,verification_batch.size(0)), verification_batch.size(0))
             unperm = list(perm)
             for i,j in enumerate(perm):
                 unperm[j] = i
-                
+
             verification_batch = verification_batch[perm]
             enrollment_embeddings = embedder_net(enrollment_batch)
             verification_embeddings = embedder_net(verification_batch)
             verification_embeddings = verification_embeddings[unperm]
             
-            enrollment_embeddings = torch.reshape(enrollment_embeddings, (hp.test.N, hp.test.M//2, enrollment_embeddings.size(1)))
-            verification_embeddings = torch.reshape(verification_embeddings, (hp.test.N, hp.test.M//2, verification_embeddings.size(1)))
-            
+            enrollment_embeddings = torch.reshape(enrollment_embeddings, (hp.test.N, int(hp.test.M/2), enrollment_embeddings.size(1)))
+            verification_embeddings = torch.reshape(verification_embeddings, (hp.test.N, int(hp.test.M/2), verification_embeddings.size(1)))
+
             enrollment_centroids = get_centroids(enrollment_embeddings)
-            
+
             sim_matrix = get_cossim(verification_embeddings, enrollment_centroids)
-            
+
             # calculating EER
             diff = 1; EER=0; EER_thresh = 0; EER_FAR=0; EER_FRR=0
             
@@ -210,9 +217,13 @@ def test(model_path):
         avg_EER += batch_avg_EER/(batch_id+1)
     avg_EER = avg_EER / hp.test.epochs
     print("\n EER across {0} epochs: {1:.4f}".format(hp.test.epochs, avg_EER))
+    return avg_EER
         
 if __name__=="__main__":
+    # configure(hp.train.checkpoint_dir, flush_secs=5)
+    tensorboard_writer = SummaryWriter(hp.train.checkpoint_dir)
+
     if hp.training:
-        train(hp.model.model_path)
+        train(hp.model.model_path, tensorboard_writer)
     else:
         test(hp.model.model_path)

@@ -27,14 +27,14 @@ train:
     num_workers: 8 #number of workers for data laoder
     lr: 0.01
     epochs: 950 #Max training speaker epoch 
-    log_interval: 1 #Epochs before printing progress
+    log_interval: 5 #Epochs before printing progress
     log_file: '/data5/eason/court/logs/log.txt'
     checkpoint_interval: 5 #Save model after x speaker epochs
     checkpoint_dir: '/data5/eason/court/ckpt/64_batch_size/'
     restore: !!bool "false" #Resume training from previous model path
 ---
 test:
-    N : 4 #Number of speakers in batch
+    N : 16 #Number of speakers in batch
     M : 6 #Number of utterances per speaker
     num_workers: 8 #number of workers for data laoder
     epochs: 10 #testing speaker epochs

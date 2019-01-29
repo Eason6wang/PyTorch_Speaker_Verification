@@ -22,7 +22,7 @@ model:
     model_path: 'ckpt/600_person_20_uter_epoch_120.pth' #Model path for testing, inference, or resuming training
 ---
 train:
-    N : 128 #Number of speakers in batch
+    N : 64 #Number of speakers in batch
     M : 10 #Number of utterances per speaker
     num_workers: 8 #number of workers for data laoder
     lr: 0.01
